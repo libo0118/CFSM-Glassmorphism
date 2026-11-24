@@ -165,3 +165,26 @@ describe('顶栏明暗按钮', () => {
     expect(labelOf(await render({ themeMode: 'dark', resolvedTheme: 'light', themeOverride: 'light' }))).toBe('切换主题，当前浅色')
   })
 })
+
+describe('顶栏品牌毛玻璃视觉升级', () => {
+  it('渲染重设计后的品牌胶囊、实时在线微徽章与副标题，等待态隐藏它们', async () => {
+    const ready = await render({ title: 'Libo Status', online: 6, total: 6 })
+    expect(ready).toContain('brand--redesigned')
+    expect(ready).toContain('brand__title-line')
+    expect(ready).toContain('brand__live-pill')
+    expect(ready).toContain('6/6')
+    expect(ready).toContain('brand__subtitle')
+
+    const pending = await render({ title: null, titlePending: true, online: 6, total: 6 })
+    expect(pending).not.toContain('brand__live-pill')
+    expect(pending).not.toContain('brand__subtitle')
+    expect(pending).toContain('brand__title-placeholder skeleton')
+  })
+
+  it('不渲染在线胶囊当 showStatus 关闭或节点总数为 0', async () => {
+    const hiddenStatus = await render({ showStatus: false, online: 5, total: 5 })
+    expect(hiddenStatus).not.toContain('brand__live-pill')
+    const emptyTotal = await render({ showStatus: true, online: 0, total: 0 })
+    expect(emptyTotal).not.toContain('brand__live-pill')
+  })
+})

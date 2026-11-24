@@ -70,6 +70,12 @@ const brandInitial = computed(() => (
   props.titlePending ? '' : (props.title?.trim().slice(0, 1) ?? '')
 ))
 const brandImage = computed(() => (faviconFailed.value ? '' : faviconSource.value))
+const brandSubtitle = computed(() => (
+  typeof window !== 'undefined' && window.location?.host
+    ? window.location.host
+    : 'Server Status'
+))
+const showBrandLivePill = computed(() => props.showStatus && props.total > 0)
 
 function resolveFavicon(): string {
   if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return ''
@@ -95,7 +101,7 @@ onUnmounted(() => window.removeEventListener('scroll', updateScrolled))
 <template>
   <header class="app-header" :class="{ 'app-header--scrolled': scrolled }">
     <div class="app-header__inner">
-      <div class="brand">
+      <div class="brand brand--redesigned">
         <span class="brand__mark" aria-hidden="true">
           <img
             v-if="brandImage"
@@ -111,7 +117,14 @@ onUnmounted(() => window.removeEventListener('scroll', updateScrolled))
         </span>
         <div class="brand__copy">
           <span v-if="titlePending" class="brand__title-placeholder skeleton" aria-hidden="true" />
-          <strong v-else>{{ title }}</strong>
+          <div v-else class="brand__title-line">
+            <strong>{{ title }}</strong>
+            <em v-if="showBrandLivePill" class="brand__live-pill" :aria-label="`${online}/${total} 在线`">
+              <i class="brand__live-dot" :class="{ 'is-loading': loading }" aria-hidden="true" />
+              <span>{{ online }}/{{ total }}</span>
+            </em>
+          </div>
+          <small v-if="!titlePending" class="brand__subtitle">{{ brandSubtitle }}</small>
           <span>
             CFSM Glassmorphism Theme
             <template v-if="version">· v{{ version }}</template>
