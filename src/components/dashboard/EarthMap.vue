@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
-import type { EarthRenderer } from '@/theme/settings'
+import type { EarthArcMode, EarthRenderer } from '@/theme/settings'
 import type { GlassServer } from '@/types/glassmorphism'
 
 /**
@@ -18,6 +18,8 @@ const props = defineProps<{
   renderer: EarthRenderer
   stopped: boolean
   isDark: boolean
+  arcMode?: EarthArcMode
+  disableAnimation?: boolean
 }>()
 
 const NodeEarthRealisticGlobe = defineAsyncComponent(
@@ -46,5 +48,7 @@ const earthComponent = computed(() => {
     :servers="props.servers"
     :stopped="props.stopped"
     :is-dark="props.isDark"
+    :arc-mode="props.arcMode ?? 'auto'"
+    :disable-animation="props.disableAnimation"
   />
 </template>

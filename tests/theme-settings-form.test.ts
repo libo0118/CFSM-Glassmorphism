@@ -66,11 +66,21 @@ const UPSTREAM_GROUPS: ReadonlyArray<{ title: string, keys: readonly string[] }>
       'backgroundBlur', 'backgroundOverlay',
     ],
   },
+  {
+    title: '09 · 增强展示',
+    keys: [
+      'earthArcMode',
+      'cardThreeNetworkPing',
+      'cardTopTagsEnabled',
+      'cardCarrierRoutesEnabled',
+      'cardCarrierRoutes',
+    ],
+  },
 ]
 
 /*
  * CFSM 公开接口确实不提供的两项：设置页不渲染，避免出现点了没反应的控件。
- * 它们仍留在 48 项 schema 与保存快照中——保存协议要求发送完整对象。
+ * 它们仍留在 53 项 schema 与保存快照中——保存协议要求发送完整对象。
  * 正式版待办见 `docs/todo.md` TODO-02。
  */
 const BACKLOG_KEYS: readonly string[] = ['rpcTransportMode', 'visitorInfoEnabled']
@@ -146,6 +156,17 @@ describe('设置页字段注册表与上游清单一致', () => {
     settings.hideEarth = true
     expect(isFieldEnabled(field('earthRenderer'), settings)).toBe(false)
     expect(isFieldEnabled(field('stopEarth'), settings)).toBe(false)
+    expect(isFieldEnabled(field('earthArcMode'), settings)).toBe(false)
+
+    expect(isFieldEnabled(field('cardCarrierRoutes'), settings)).toBe(true)
+    settings.cardCarrierRoutesEnabled = false
+    expect(isFieldEnabled(field('cardCarrierRoutes'), settings)).toBe(false)
+
+    expect(field('earthArcMode').options).toEqual([
+      { value: 'auto', label: '自动动态弧线' },
+      { value: 'persistent', label: '常驻实线弧线' },
+      { value: 'off', label: '关闭弧线' },
+    ])
   })
 
   /*

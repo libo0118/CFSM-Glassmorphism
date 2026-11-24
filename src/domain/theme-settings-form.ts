@@ -75,6 +75,12 @@ const EARTH_RENDERER_OPTIONS: readonly ThemeFieldOption[] = [
   { value: 'tiled', label: '平铺地图' },
 ]
 
+export const EARTH_ARC_MODE_OPTIONS: readonly ThemeFieldOption[] = [
+  { value: 'auto', label: '自动动态弧线' },
+  { value: 'persistent', label: '常驻实线弧线' },
+  { value: 'off', label: '关闭弧线' },
+]
+
 const GLASS_PRESET_OPTIONS: readonly ThemeFieldOption[] = [
   { value: '翡翠', label: '翡翠' },
   { value: '柔和', label: '柔和' },
@@ -496,6 +502,46 @@ export const THEME_SETTINGS_FORM: readonly ThemeFieldGroup[] = [
         unit: '%',
         help: '范围 -100 到 100；0 关闭，正数加深，负数提亮。',
         enabled: (settings) => settings.backgroundEnabled,
+      },
+    ],
+  },
+  {
+    title: '09 · 增强展示',
+    fields: [
+      {
+        key: 'earthArcMode',
+        label: '地球弧线模式',
+        kind: 'select',
+        options: EARTH_ARC_MODE_OPTIONS,
+        help: '控制地球渲染器上的区域枢纽连线：自动动态弧线带脉冲动画，常驻实线弧线保持静态连线，关闭弧线则隐藏连线。',
+        enabled: (settings) => !settings.hideEarth,
+      },
+      {
+        key: 'cardThreeNetworkPing',
+        label: '卡片三网延迟条',
+        kind: 'switch',
+        help: '在首页节点卡片展示三网（电信、联通、移动）延迟与丢包信号条。',
+      },
+      {
+        key: 'cardTopTagsEnabled',
+        label: '卡片顶部标签',
+        kind: 'switch',
+        help: '在首页节点卡片展示标签信息；关闭后隐藏卡片上的标签列表。',
+      },
+      {
+        key: 'cardCarrierRoutesEnabled',
+        label: '卡片三网线路标签',
+        kind: 'switch',
+        help: '在节点卡片展示三网线路标签；支持下方的手动规则与节点标签自动识别。',
+      },
+      {
+        key: 'cardCarrierRoutes',
+        label: '节点三网线路规则',
+        kind: 'textarea',
+        rows: 5,
+        wide: true,
+        help: '每行一条，支持格式：`节点名 = 联通 / 电信 / 移动` 或 `节点名 = cu:AS4837, ct:163, cm:CMI`；未配置规则时也支持通过节点标签自动识别。',
+        enabled: (settings) => settings.cardCarrierRoutesEnabled,
       },
     ],
   },

@@ -5,6 +5,8 @@ import type { NodeCardSize } from '@/theme/settings'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import AppProgressThin from '@/components/ui/AppProgressThin.vue'
 import { resolveRegionCoordinates } from '@/domain/advanced-tools'
+import { buildThreeNetworkRows, hasThreeNetworkProbes } from '@/domain/carrier-ping'
+import { parseCarrierRoutesConfig, resolveServerTopMeta } from '@/domain/carrier-routes'
 import { probeSeriesFor, windowAverage, type ProbeSeriesMap } from '@/domain/probe-window'
 import {
   daysUntilExpiry,
@@ -41,7 +43,7 @@ import { trafficStatus, trafficTextTone, usageStatus } from '@/utils/progress-st
  *
  * 数据全部来自既有 normalized model，不解析 wire payload，也不补造缺失值。
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   server: GlassServer
   showSource: boolean
   /** 卡片密度直接来自主题设置 `nodeCardSize`，与 Komari 的 NodeCard 一致。 */
@@ -49,7 +51,16 @@ const props = defineProps<{
   favorite: boolean
   /** 主题级价格隐私（未登录隐藏价格）。每台节点自身的 showPrice 仍单独生效。 */
   priceVisible: boolean
-}>()
+  threeNetworkPing?: boolean
+  topTagsEnabled?: boolean
+  carrierRoutesEnabled?: boolean
+  carrierRoutesConfig?: string
+}>(), {
+  threeNetworkPing: true,
+  topTagsEnabled: true,
+  carrierRoutesEnabled: true,
+  carrierRoutesConfig: '',
+})
 
 const emit = defineEmits<{
   open: []
@@ -268,6 +279,24 @@ const lossBars = computed(() => buildBars(
   lossToneClass,
 ))
 
+const carrierRouteConfigMap = computed(() => parseCarrierRoutesConfig(props.carrierRoutesConfig))
+const topMeta = computed(() => resolveServerTopMeta(
+  props.server,
+  carrierRouteConfigMap.value,
+  props.carrierRoutesEnabled !== false,
+))
+const plainTags = computed(() => topMeta.value.plainTags)
+const routeEntries = computed(() => topMeta.value.routes)
+const showTopTags = computed(() => props.topTagsEnabled !== false && plainTags.value.length > 0)
+const showCarrierRoutes = computed(() => props.carrierRoutesEnabled !== false && routeEntries.value.length > 0)
+
+const useThreeNetwork = computed(() => props.threeNetworkPing !== false && hasThreeNetworkProbes(props.server))
+const threeNetworkRows = computed(() => (
+  useThreeNetwork.value
+    ? buildThreeNetworkRows(props.server, latencyToneClass, lossToneClass, EMPTY_PING_BAR_COUNT)
+    : []
+))
+
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key !== 'Enter' && event.key !== ' ') return
   event.preventDefault()
@@ -338,8 +367,29 @@ function hideMissingImage(event: Event): void {
     </header>
 
     <div class="node-card__body">
-      <div class="node-card__chips">
-        <span v-for="chip in chips" :key="chip" class="node-chip">{{ chip }}</span>
+      <div class="node-card__meta-row">
+        <div class="node-card__chips">
+          <span v-for="chip in chips" :key="chip" class="node-chip">{{ chip }}</span>
+        </div>
+        <div v-if="showTopTags" class="node-header-tags" aria-label="自定义标签">
+          <span v-for="tag in plainTags" :key="tag" class="node-header-tag" :title="tag">{{ tag }}</span>
+        </div>
+      </div>
+
+      <div v-if="showCarrierRoutes" class="node-route-summary" aria-label="三网回程线路">
+        <span
+          v-for="entry in routeEntries"
+          :key="entry.carrier"
+          class="node-route-summary__item"
+          :class="`node-route-summary__item--${entry.carrier}`"
+          :data-carrier-route="entry.carrier"
+          :title="`${entry.carrier === 'unicom' ? '联通' : entry.carrier === 'telecom' ? '电信' : '移动'}线路 ${entry.label}`"
+        >
+          <span class="node-route-summary__group">
+            <span class="node-route-summary__dot" :class="`node-route-summary__dot--${entry.carrier}`" aria-hidden="true" />
+            <span class="node-route-summary__label">{{ entry.label }}</span>
+          </span>
+        </span>
       </div>
 
       <!--
@@ -524,35 +574,91 @@ function hideMissingImage(event: Event): void {
         </div>
       </div>
 
-      <div v-if="primaryProbe" class="node-probes">
-        <div class="node-probe">
-          <div class="node-probe__head" :title="latencyTitle">
-            <span>延迟</span>
-            <span class="node-probe__value">{{ latencyText }}</span>
+      <div v-if="useThreeNetwork || primaryProbe" class="node-probes">
+        <template v-if="useThreeNetwork">
+          <div class="node-probe node-probe--three-net">
+            <div class="node-probe__head">
+              <span>延迟</span>
+              <span class="node-probe__sub">三网</span>
+            </div>
+            <div class="node-probe__carriers">
+              <div
+                v-for="row in threeNetworkRows"
+                :key="`latency-${row.target}`"
+                class="node-probe__carrier-row"
+                :title="row.latency.title"
+              >
+                <span class="node-probe__carrier-label">
+                  <span class="node-probe__carrier-dot" :class="row.dotClass" aria-hidden="true" />
+                  <span>{{ row.label }}</span>
+                </span>
+                <span class="node-probe__carrier-value">{{ row.latency.text }}</span>
+                <div
+                  class="node-probe__bars node-probe__carrier-bars"
+                  :style="{ gridTemplateColumns: `repeat(${row.latency.bars.length}, minmax(0, 1fr))` }"
+                >
+                  <span v-for="bar in row.latency.bars" :key="bar.key" :class="bar.className" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div
-            class="node-probe__bars"
-            :style="{ gridTemplateColumns: `repeat(${latencyBars.length}, minmax(0, 1fr))` }"
-          >
-            <span v-for="bar in latencyBars" :key="bar.key" :class="bar.className" />
+          <div class="node-probe node-probe--three-net">
+            <div class="node-probe__head">
+              <span>丢包</span>
+              <span class="node-probe__sub">三网</span>
+            </div>
+            <div class="node-probe__carriers">
+              <div
+                v-for="row in threeNetworkRows"
+                :key="`loss-${row.target}`"
+                class="node-probe__carrier-row"
+                :title="row.loss.title"
+              >
+                <span class="node-probe__carrier-label">
+                  <span class="node-probe__carrier-dot" :class="row.dotClass" aria-hidden="true" />
+                  <span>{{ row.label }}</span>
+                </span>
+                <span class="node-probe__carrier-value">{{ row.loss.text }}</span>
+                <div
+                  class="node-probe__bars node-probe__carrier-bars"
+                  :style="{ gridTemplateColumns: `repeat(${row.loss.bars.length}, minmax(0, 1fr))` }"
+                >
+                  <span v-for="bar in row.loss.bars" :key="bar.key" :class="bar.className" />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="node-probe">
-          <div class="node-probe__head" :title="lossTitle">
-            <span>丢包</span>
-            <span class="node-probe__value">{{ lossText }}</span>
+        </template>
+        <template v-else-if="primaryProbe">
+          <div class="node-probe">
+            <div class="node-probe__head" :title="latencyTitle">
+              <span>延迟</span>
+              <span class="node-probe__value">{{ latencyText }}</span>
+            </div>
+            <div
+              class="node-probe__bars"
+              :style="{ gridTemplateColumns: `repeat(${latencyBars.length}, minmax(0, 1fr))` }"
+            >
+              <span v-for="bar in latencyBars" :key="bar.key" :class="bar.className" />
+            </div>
           </div>
-          <div
-            class="node-probe__bars"
-            :style="{ gridTemplateColumns: `repeat(${lossBars.length}, minmax(0, 1fr))` }"
-          >
-            <span v-for="bar in lossBars" :key="bar.key" :class="bar.className" />
+          <div class="node-probe">
+            <div class="node-probe__head" :title="lossTitle">
+              <span>丢包</span>
+              <span class="node-probe__value">{{ lossText }}</span>
+            </div>
+            <div
+              class="node-probe__bars"
+              :style="{ gridTemplateColumns: `repeat(${lossBars.length}, minmax(0, 1fr))` }"
+            >
+              <span v-for="bar in lossBars" :key="bar.key" :class="bar.className" />
+            </div>
           </div>
-        </div>
+        </template>
       </div>
 
-      <div v-if="server.tags.length > 0" class="node-tags" aria-label="节点标签">
-        <span v-for="tag in server.tags" :key="tag" class="node-tag">{{ tag }}</span>
+      <div v-if="!topTagsEnabled && plainTags.length > 0" class="node-tags" aria-label="节点标签">
+        <span v-for="tag in plainTags" :key="tag" class="node-tag">{{ tag }}</span>
       </div>
 
       <div v-if="!server.online" class="node-card__offline" aria-hidden="true">

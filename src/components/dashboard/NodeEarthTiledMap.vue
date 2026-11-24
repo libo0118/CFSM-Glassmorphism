@@ -4,6 +4,7 @@ import EARTH_DAY_TEXTURE from '@/assets/earth/earth-blue-marble.jpg'
 import EARTH_BUMP_MAP from '@/assets/earth/earth-topology.png'
 import EARTH_SPECULAR_MAP from '@/assets/earth/earth-water.png'
 import { useServerGeoClusters } from '@/composables/useServerGeoClusters'
+import { buildEarthArcs, type EarthArcMode } from '@/domain/earth-arcs'
 import { flagUrl, hideMissingFlag } from '@/utils/flags'
 import type { GlassServer } from '@/types/glassmorphism'
 
@@ -16,6 +17,8 @@ const props = defineProps<{
   servers: readonly GlassServer[]
   stopped?: boolean
   isDark?: boolean
+  arcMode?: EarthArcMode
+  disableAnimation?: boolean
 }>()
 
 const MAP_WIDTH = 1440
@@ -40,6 +43,11 @@ interface ClusterMarker {
   x: number
   y: number
   statusClass: string
+}
+
+interface ArcPath {
+  id: string
+  path: string
 }
 
 const {
@@ -93,10 +101,32 @@ const clusterMarkers = computed<ClusterMarker[]>(() => regionClusters.value.map(
     statusClass: cluster.onlineServers > 0 ? 'is-online' : 'is-offline',
   }
 }))
+
+const earthArcs = computed(() => buildEarthArcs(props.arcMode ?? 'auto', regionClusters.value))
+const persistentEarthArcs = computed(() => (props.arcMode ?? 'auto') === 'persistent')
+
+const arcPaths = computed<ArcPath[]>(() => earthArcs.value.map((arc) => {
+  const from = projectCoord(arc.from)
+  const to = projectCoord(arc.to)
+  const distance = Math.hypot(to.x - from.x, to.y - from.y)
+  const midX = (from.x + to.x) / 2
+  const midY = (from.y + to.y) / 2
+  const lift = Math.min(Math.max(distance * 0.22, 24), 140)
+  const cx = clamp(midX, MAP_PADDING, MAP_WIDTH - MAP_PADDING)
+  const cy = clamp(midY - lift, MAP_PADDING, MAP_HEIGHT - MAP_PADDING)
+  return {
+    id: arc.id,
+    path: `M ${from.x.toFixed(1)} ${from.y.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${to.x.toFixed(1)} ${to.y.toFixed(1)}`,
+  }
+}))
 </script>
 
 <template>
-  <div class="earth-map-scroll">
+  <div
+    class="earth-map-scroll"
+    :data-earth-arc-count="earthArcs.length"
+    :data-earth-arc-motion="persistentEarthArcs ? 'persistent' : 'dynamic'"
+  >
     <div class="earth-map-shell">
       <div class="earth-map">
         <svg
@@ -127,6 +157,23 @@ const clusterMarkers = computed<ClusterMarker[]>(() => regionClusters.value.map(
             :height="TEXTURE_FULL_HEIGHT" preserveAspectRatio="none" class="earth-image earth-image-water"
           />
           <rect :width="MAP_WIDTH" :height="MAP_HEIGHT" class="earth-overlay" />
+
+          <g
+            v-if="arcPaths.length > 0"
+            class="earth-arcs"
+            :class="{
+              'is-persistent': persistentEarthArcs,
+              'is-static': Boolean(props.disableAnimation),
+            }"
+            aria-hidden="true"
+          >
+            <path
+              v-for="arc in arcPaths"
+              :key="arc.id"
+              :d="arc.path"
+              class="earth-arc"
+            />
+          </g>
 
           <g class="city-points">
             <template v-for="marker in clusterMarkers" :key="`${marker.id}-point`">
@@ -321,6 +368,50 @@ const clusterMarkers = computed<ClusterMarker[]>(() => regionClusters.value.map(
 .map-status__dot--offline {
   background: var(--red);
   box-shadow: 0 0 10px color-mix(in srgb, var(--red) 70%, transparent);
+}
+
+.earth-arcs {
+  pointer-events: none;
+}
+
+.earth-arc {
+  fill: none;
+  stroke: rgb(2 132 199 / 68%);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-dasharray: 8 6;
+  vector-effect: non-scaling-stroke;
+  animation: earth-arc-flow 2.6s linear infinite;
+}
+
+.earth-arcs.is-persistent .earth-arc {
+  stroke: rgb(2 132 199 / 58%);
+  stroke-dasharray: none;
+  animation: none;
+}
+
+.earth-arcs.is-static .earth-arc {
+  animation: none;
+}
+
+:global([data-theme='dark']) .earth-arc {
+  stroke: rgb(56 189 248 / 78%);
+}
+
+:global([data-theme='dark']) .earth-arcs.is-persistent .earth-arc {
+  stroke: rgb(56 189 248 / 66%);
+}
+
+@keyframes earth-arc-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .earth-arc {
+    animation: none;
+  }
 }
 
 .city-region {

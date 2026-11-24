@@ -480,6 +480,8 @@ onUnmounted(() => realtime.stop())
               :renderer="theme.runtime.earthRenderer"
               :stopped="theme.runtime.stopEarth"
               :is-dark="isDark"
+              :arc-mode="theme.runtime.earthArcMode"
+              :disable-animation="theme.runtime.disablePageAnimation"
             />
 
             <OverviewCards
@@ -580,6 +582,10 @@ onUnmounted(() => realtime.stop())
                 :density="theme.runtime.nodeCardSize"
                 :favorite="preferences.isFavorite(server.key)"
                 :price-visible="priceVisible"
+                :three-network-ping="theme.runtime.cardThreeNetworkPing"
+                :top-tags-enabled="theme.runtime.cardTopTagsEnabled"
+                :carrier-routes-enabled="theme.runtime.cardCarrierRoutesEnabled"
+                :carrier-routes-config="theme.runtime.cardCarrierRoutes"
                 :style="cardStyle(index)"
                 @open="openServer(server)"
                 @toggle-favorite="preferences.toggleFavorite(server.key)"

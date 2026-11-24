@@ -12,6 +12,7 @@ import EARTH_NIGHT_TEXTURE from '@/assets/earth/earth-night.jpg'
 import EARTH_BUMP_MAP from '@/assets/earth/earth-topology.png'
 import EARTH_SPECULAR_MAP from '@/assets/earth/earth-water.png'
 import { useServerGeoClusters } from '@/composables/useServerGeoClusters'
+import { buildEarthArcs, type EarthArcMode } from '@/domain/earth-arcs'
 import { flagUrl } from '@/utils/flags'
 import type { GlassServer } from '@/types/glassmorphism'
 
@@ -19,6 +20,8 @@ const props = defineProps<{
   servers: readonly GlassServer[]
   stopped: boolean
   isDark: boolean
+  arcMode?: EarthArcMode
+  disableAnimation?: boolean
 }>()
 
 const CHINA_COORD: [number, number] = [35.8617, 104.1954]
@@ -53,6 +56,14 @@ interface GlobeLabel {
   code: string
 }
 
+interface GlobeArc {
+  id: string
+  startLat: number
+  startLng: number
+  endLat: number
+  endLng: number
+}
+
 const {
   regionClusters,
   totalServers,
@@ -75,6 +86,16 @@ const labelsData = computed<GlobeLabel[]>(() => regionClusters.value.map((cluste
   lat: cluster.coord[0],
   lng: cluster.coord[1],
   code: cluster.code,
+})))
+
+const earthArcs = computed(() => buildEarthArcs(props.arcMode ?? 'auto', regionClusters.value))
+const persistentEarthArcs = computed(() => (props.arcMode ?? 'auto') === 'persistent')
+const arcsData = computed<GlobeArc[]>(() => earthArcs.value.map((arc) => ({
+  id: arc.id,
+  startLat: arc.from[0],
+  startLng: arc.from[1],
+  endLat: arc.to[0],
+  endLng: arc.to[1],
 })))
 
 function earthTextureUrl(): string {
@@ -133,6 +154,14 @@ function applyControls(): void {
   controls.rotateSpeed = 0.55
 }
 
+function applyArcStyle(): void {
+  if (!globe) return
+  globe
+    .arcDashLength(persistentEarthArcs.value ? 1 : 0.48)
+    .arcDashGap(persistentEarthArcs.value ? 0 : 1.4)
+    .arcDashAnimateTime(persistentEarthArcs.value || props.disableAnimation ? 0 : 2600)
+}
+
 function applyMaterialStyle(): void {
   if (!globe || !globeMaterial) return
   globe.globeImageUrl(earthTextureUrl())
@@ -144,6 +173,7 @@ function applyMaterialStyle(): void {
   globe
     .pointColor(pointColor)
     .ringColor(() => (props.isDark ? 'rgba(45, 212, 191, 0.34)' : 'rgba(14, 165, 233, 0.28)'))
+    .arcColor(() => (props.isDark ? 'rgba(56, 189, 248, 0.82)' : 'rgba(2, 132, 199, 0.72)'))
     .atmosphereColor(props.isDark ? '#38bdf8' : '#60a5fa')
     .atmosphereAltitude(props.isDark ? 0.14 : 0.11)
 }
@@ -153,6 +183,7 @@ function syncDataToGlobe(): void {
   globe
     .pointsData(pointsData.value)
     .ringsData(pointsData.value)
+    .arcsData(arcsData.value)
     .htmlElementsData(labelsData.value)
 }
 
@@ -195,6 +226,15 @@ async function startGlobe(): Promise<void> {
       .ringMaxRadius(1.4)
       .ringPropagationSpeed(0.8)
       .ringRepeatPeriod(2400)
+      .arcsData(arcsData.value)
+      .arcStartLat('startLat')
+      .arcStartLng('startLng')
+      .arcEndLat('endLat')
+      .arcEndLng('endLng')
+      .arcColor(() => (props.isDark ? 'rgba(56, 189, 248, 0.82)' : 'rgba(2, 132, 199, 0.72)'))
+      .arcAltitudeAutoScale(0.22)
+      .arcStroke(0.45)
+      .arcsTransitionDuration(500)
       .htmlElementsData(labelsData.value)
       .htmlLat('lat')
       .htmlLng('lng')
@@ -235,6 +275,7 @@ async function startGlobe(): Promise<void> {
     ])
 
     applyMaterialStyle()
+    applyArcStyle()
     applyControls()
     resetPointOfView(0)
     if (!shouldRender.value) globe.pauseAnimation()
@@ -273,6 +314,15 @@ watch(() => regionClusters.value.map(clusterKey).join(','), () => {
   syncDataToGlobe()
 })
 
+watch(() => props.arcMode, () => {
+  syncDataToGlobe()
+  applyArcStyle()
+})
+
+watch(() => props.disableAnimation, () => {
+  applyArcStyle()
+})
+
 watch(() => props.isDark, () => {
   applyMaterialStyle()
 })
@@ -296,7 +346,12 @@ watch(shouldRender, (visible) => {
 </script>
 
 <template>
-  <div ref="containerRef" class="earth-globe-frame">
+  <div
+    ref="containerRef"
+    class="earth-globe-frame"
+    :data-earth-arc-count="earthArcs.length"
+    :data-earth-arc-motion="persistentEarthArcs ? 'persistent' : 'dynamic'"
+  >
     <div ref="globeHostRef" class="earth-globe-host" />
 
     <div v-if="totalServers > 0" class="earth-globe-status">

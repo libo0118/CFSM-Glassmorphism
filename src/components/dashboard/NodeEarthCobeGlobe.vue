@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { COBEOptions, Globe, Marker } from 'cobe'
+import type { Arc, COBEOptions, Globe, Marker } from 'cobe'
 import type { ComponentPublicInstance } from 'vue'
 import {
   useDocumentVisibility,
@@ -10,6 +10,7 @@ import {
 import createGlobe from 'cobe'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useServerGeoClusters } from '@/composables/useServerGeoClusters'
+import { buildEarthArcs, type EarthArcMode } from '@/domain/earth-arcs'
 import { flagUrl, hideMissingFlag } from '@/utils/flags'
 import type { GlassServer } from '@/types/glassmorphism'
 
@@ -17,6 +18,7 @@ const props = defineProps<{
   servers: readonly GlassServer[]
   stopped: boolean
   isDark: boolean
+  arcMode?: EarthArcMode
 }>()
 
 const containerRef = ref<HTMLDivElement>()
@@ -94,6 +96,14 @@ const markers = computed<Marker[]>(() => regionClusters.value.map((cluster) => (
   size: 0,
 })))
 
+const earthArcs = computed(() => buildEarthArcs(props.arcMode ?? 'auto', regionClusters.value))
+
+const arcs = computed<Arc[]>(() => earthArcs.value.map((arc) => ({
+  from: arc.from,
+  to: arc.to,
+  id: arc.id,
+})))
+
 function getClusterStyle(coord: [number, number]): { transform: string, opacity: string, filter: string } {
   const [lat, lng] = coord
   const lambda = lng * Math.PI / 180
@@ -159,6 +169,7 @@ const themeColors = computed(() => {
       baseColor: [0.95, 0.95, 0.98] as [number, number, number],
       markerColor: [0.18, 0.78, 1.0] as [number, number, number],
       glowColor: [0.78, 0.90, 1.0] as [number, number, number],
+      arcColor: [0.22, 0.74, 0.98] as [number, number, number],
     }
   }
   return {
@@ -167,6 +178,7 @@ const themeColors = computed(() => {
     baseColor: [0.98, 0.98, 0.99] as [number, number, number],
     markerColor: [0.05, 0.35, 0.90] as [number, number, number],
     glowColor: [0.80, 0.90, 1.0] as [number, number, number],
+    arcColor: [0.03, 0.52, 0.78] as [number, number, number],
   }
 })
 
@@ -200,6 +212,10 @@ function buildInitialOptions(): COBEOptions {
     glowColor: colors.glowColor,
     markers: markers.value,
     markerElevation: 0,
+    arcs: arcs.value,
+    arcColor: colors.arcColor,
+    arcWidth: 0.8,
+    arcHeight: 0.4,
   }
 }
 
@@ -297,9 +313,18 @@ watch(() => props.stopped, (stopped) => {
 
 watch(() => regionClusters.value.map(clusterKey).join(','), () => {
   if (!globe) return
-  globe.update({ markers: markers.value })
+  globe.update({ markers: markers.value, arcs: arcs.value })
   applyLabelStyles()
   if (!shouldAutoRotate.value) triggerStaticRedrawWindow(600)
+})
+
+watch(() => props.arcMode, () => {
+  if (!globe) return
+  globe.update({ markers: markers.value, arcs: arcs.value })
+  if (!shouldAutoRotate.value) {
+    triggerStaticRedrawWindow(600)
+    updateGlobeFrame()
+  }
 })
 
 watch(shouldRender, (visible) => {
@@ -338,7 +363,7 @@ function onPointerUp(event: PointerEvent): void {
 </script>
 
 <template>
-  <div ref="containerRef" class="earth-cobe-frame">
+  <div ref="containerRef" class="earth-cobe-frame" :data-earth-arc-count="earthArcs.length">
     <canvas
       ref="canvasRef"
       class="earth-cobe-canvas"

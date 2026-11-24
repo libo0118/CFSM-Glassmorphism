@@ -51,9 +51,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 describe('theme settings schema', () => {
-  it('normalizes all 48 audited fields across defaults, backend and local layers', () => {
-    expect(THEME_SETTING_KEYS).toHaveLength(48)
-    expect(Object.keys(createThemeOptionsSnapshot(resolveThemeSettings({}, {})))).toHaveLength(48)
+  it('normalizes all 53 audited fields across defaults, backend and local layers', () => {
+    expect(THEME_SETTING_KEYS).toHaveLength(53)
+    expect(Object.keys(createThemeOptionsSnapshot(resolveThemeSettings({}, {})))).toHaveLength(53)
     const backend = {
       themeMode: 'dark',
       offlineNodesLast: false,
@@ -77,6 +77,37 @@ describe('theme settings schema', () => {
     expect(snapshot.futureOption).toEqual({ keep: true })
     expect(snapshot.jwt_token).toBeUndefined()
     expect(THEME_SETTING_KEYS.every((key) => key in snapshot)).toBe(true)
+  })
+
+  it('normalizes enhanced display defaults and overrides across layers', () => {
+    const defaults = resolveThemeSettings({}, {})
+    expect(defaults.earthArcMode).toBe('auto')
+    expect(defaults.cardThreeNetworkPing).toBe(true)
+    expect(defaults.cardTopTagsEnabled).toBe(true)
+    expect(defaults.cardCarrierRoutesEnabled).toBe(true)
+    expect(defaults.cardCarrierRoutes).toBe('')
+
+    const normalized = resolveThemeSettings(
+      {
+        earthArcMode: 'persistent',
+        cardThreeNetworkPing: false,
+        cardTopTagsEnabled: false,
+        cardCarrierRoutesEnabled: false,
+        cardCarrierRoutes: 'HK = 联通 / 电信 / 移动',
+      },
+      {
+        earthArcMode: 'invalid-mode',
+        cardThreeNetworkPing: 'not-bool',
+      },
+    )
+    expect(normalized.earthArcMode).toBe('persistent')
+    expect(normalized.cardThreeNetworkPing).toBe(false)
+    expect(normalized.cardTopTagsEnabled).toBe(false)
+    expect(normalized.cardCarrierRoutesEnabled).toBe(false)
+    expect(normalized.cardCarrierRoutes).toBe('HK = 联通 / 电信 / 移动')
+
+    const offMode = resolveThemeSettings({}, { earthArcMode: 'off' })
+    expect(offMode.earthArcMode).toBe('off')
   })
 
   it('migrates legacy visual preferences without mixing favorites into theme options', () => {

@@ -1,4 +1,7 @@
+import type { EarthArcMode } from '@/domain/earth-arcs'
 import type { DashboardThemeMode, DashboardViewMode } from '@/types/glassmorphism'
+
+export type { EarthArcMode }
 
 export const THEME_SETTINGS_STORAGE_KEY = 'cfsm-glassmorphism.theme-options.v1'
 export const LEGACY_DASHBOARD_STORAGE_KEY = 'cfsm-glassmorphism.dashboard.v1'
@@ -60,6 +63,11 @@ export interface ThemeSettings {
   darkBackgroundUrl: string
   backgroundBlur: number
   backgroundOverlay: number
+  earthArcMode: EarthArcMode
+  cardThreeNetworkPing: boolean
+  cardTopTagsEnabled: boolean
+  cardCarrierRoutesEnabled: boolean
+  cardCarrierRoutes: string
 }
 
 export const THEME_SETTING_KEYS = [
@@ -111,6 +119,11 @@ export const THEME_SETTING_KEYS = [
   'darkBackgroundUrl',
   'backgroundBlur',
   'backgroundOverlay',
+  'earthArcMode',
+  'cardThreeNetworkPing',
+  'cardTopTagsEnabled',
+  'cardCarrierRoutesEnabled',
+  'cardCarrierRoutes',
 ] as const satisfies readonly (keyof ThemeSettings)[]
 
 const CUSTOM_COLOR_KEYS = [
@@ -191,6 +204,11 @@ export const DEFAULT_THEME_SETTINGS: Readonly<ThemeSettings> = Object.freeze({
   darkBackgroundUrl: '',
   backgroundBlur: 0,
   backgroundOverlay: 0,
+  earthArcMode: 'auto',
+  cardThreeNetworkPing: true,
+  cardTopTagsEnabled: true,
+  cardCarrierRoutesEnabled: true,
+  cardCarrierRoutes: '',
 })
 
 const KNOWN_THEME_KEYS = new Set<string>(THEME_SETTING_KEYS)
@@ -441,6 +459,11 @@ export function normalizeThemeSettingsLayer(
     darkBackgroundUrl: backgroundSourceValue(input.darkBackgroundUrl, fallback.darkBackgroundUrl),
     backgroundBlur: numberValue(input.backgroundBlur, fallback.backgroundBlur, 0, 80),
     backgroundOverlay: numberValue(input.backgroundOverlay, fallback.backgroundOverlay, -100, 100),
+    earthArcMode: oneOf(input.earthArcMode, ['auto', 'persistent', 'off'], fallback.earthArcMode),
+    cardThreeNetworkPing: booleanValue(input.cardThreeNetworkPing, fallback.cardThreeNetworkPing),
+    cardTopTagsEnabled: booleanValue(input.cardTopTagsEnabled, fallback.cardTopTagsEnabled),
+    cardCarrierRoutesEnabled: booleanValue(input.cardCarrierRoutesEnabled, fallback.cardCarrierRoutesEnabled),
+    cardCarrierRoutes: textValue(input.cardCarrierRoutes, fallback.cardCarrierRoutes),
   }
 }
 
@@ -507,6 +530,11 @@ export function serializeThemeSettings(settings: ThemeSettings): Record<string, 
     darkBackgroundUrl: settings.darkBackgroundUrl,
     backgroundBlur: settings.backgroundBlur,
     backgroundOverlay: settings.backgroundOverlay,
+    earthArcMode: settings.earthArcMode,
+    cardThreeNetworkPing: settings.cardThreeNetworkPing,
+    cardTopTagsEnabled: settings.cardTopTagsEnabled,
+    cardCarrierRoutesEnabled: settings.cardCarrierRoutesEnabled,
+    cardCarrierRoutes: settings.cardCarrierRoutes,
   }
 }
 

@@ -6121,3 +6121,189 @@ a {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* 节点卡片顶部标签、三网回程线路与三网延迟/丢包面板。 */
+.node-card__meta-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.node-header-tags {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-top: -4px;
+}
+
+.node-header-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  max-width: 112px;
+  padding: 0 7px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--muted-base) 18%, transparent);
+  border-radius: 999px;
+  color: var(--muted);
+  background: color-mix(in oklab, var(--muted-base) 8%, transparent);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:root[data-theme='dark'] .node-header-tag {
+  border-color: rgb(255 255 255 / 14%);
+  background: rgb(255 255 255 / 7%);
+}
+
+.node-card--mini .node-header-tag {
+  height: 18px;
+  max-width: 88px;
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.node-route-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.node-card--mini .node-route-summary {
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.node-route-summary__item {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.node-route-summary__item--unicom {
+  grid-column: 1;
+}
+
+.node-route-summary__item--telecom {
+  grid-column: 2;
+}
+
+.node-route-summary__item--mobile {
+  grid-column: 3;
+}
+
+.node-route-summary__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.node-route-summary__dot,
+.node-probe__carrier-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.node-route-summary__dot--unicom,
+.node-probe__carrier-dot--cu {
+  background: #ef4444;
+}
+
+.node-route-summary__dot--telecom,
+.node-probe__carrier-dot--ct {
+  background: #3b82f6;
+}
+
+.node-route-summary__dot--mobile,
+.node-probe__carrier-dot--cm {
+  background: #10b981;
+}
+
+.node-route-summary__label {
+  min-width: 0;
+  color: var(--ink);
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.node-probe--three-net {
+  min-height: 0;
+}
+
+.node-probe__sub {
+  font-size: 10px;
+  opacity: 0.72;
+}
+
+.node-probe__carriers {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.node-card--mini .node-probe__carriers {
+  gap: 3px;
+}
+
+.node-probe__carrier-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 6px;
+  min-width: 0;
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.node-card--mini .node-probe__carrier-row {
+  gap: 2px 4px;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.node-probe__carrier-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.node-probe__carrier-value {
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.node-probe__carrier-bars {
+  grid-column: 1 / -1;
+  flex: none;
+  width: 100%;
+  height: 6px;
+  min-height: 6px;
+}
+
+.node-card--mini .node-probe__carrier-bars {
+  height: 4px;
+  min-height: 4px;
+}
